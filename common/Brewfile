@@ -1,0 +1,14 @@
+# Outils communs à tous les profils. À éditer à la main.
+#   Installer:         brew bundle --file=common/Brewfile   (ou bash install.sh)
+
+# --- CLI ---------------------------------------------------------------------
+brew "tree"
+brew "z"
+brew "thefuck"
+
+# --- Apps --------------------------------------------------------------------
+cask "docker-desktop"
+cask "firefox"
+cask "iterm2"
+cask "obsidian"
+cask "rectangle"

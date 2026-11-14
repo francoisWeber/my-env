@@ -1,0 +1,9 @@
+.DS_Store
+.vscode/
+local.sh
+*.pre-my-env
+.env
+.env.*
+id_*
+*.pem
+*.key

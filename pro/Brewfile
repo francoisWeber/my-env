@@ -1,0 +1,5 @@
+# Profil pro: s'ajoute à common/Brewfile (ex: bash install.sh --profile perso,pro).
+# Ne pas lister ici les apps imposées/gérées par l'IT (antivirus, VPN d'entreprise, SSO...).
+# Dépôt public: pas de noms de hosts, de projets ou d'outils internes.
+
+cask "slack"

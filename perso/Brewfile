@@ -1,0 +1,6 @@
+# Profil perso: s'ajoute à common/Brewfile.
+
+cask "deezer"
+cask "nextcloud"
+cask "signal"
+brew "ffmpeg"

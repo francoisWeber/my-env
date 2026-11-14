@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Garde-fou dépôt public: refuse un commit dont le diff ressemble à un secret.
+# Activé par install.sh (git config core.hooksPath .githooks). Contournement: git commit --no-verify
+pattern='(sk-ant-[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(API_KEY|SECRET|TOKEN|PASSWORD|PASSWD)[A-Z_]*=.{0,1}[A-Za-z0-9/+_-]{16,})'
+
+hits="$(git diff --cached -U0 --no-color | grep -E '^\+[^+]' | grep -E "$pattern" || true)"
+if [ -n "$hits" ]; then
+  echo "✗ Commit refusé: secret potentiel dans le diff indexé (début des lignes):" >&2
+  printf '%s\n' "$hits" | cut -c1-40 | sed 's/$/…/' >&2
+  echo "  Mets-le dans ~/.config/my-env/local.sh (hors dépôt)." >&2
+  exit 1
+fi
