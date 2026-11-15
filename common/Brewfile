@@ -5,6 +5,7 @@
 brew "tree"
 brew "z"
 brew "thefuck"
+brew "imagemagick"
 
 # --- Apps --------------------------------------------------------------------
 cask "docker-desktop"
