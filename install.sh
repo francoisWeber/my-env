@@ -5,7 +5,7 @@
 #   bash install.sh                      # profil "perso" (ou celui déjà enregistré)
 #   bash install.sh --profile perso,pro  # superpose plusieurs profils
 #   bash install.sh --dry-run            # montre ce qui serait fait, ne modifie rien
-#   bash install.sh --skip brew,ssh      # étapes: xcode,brew,shell,git,ssh,apps
+#   bash install.sh --skip brew,ssh      # étapes: xcode,brew,shell,git,ssh,skills,apps
 set -euo pipefail
 
 # shellcheck source=scripts/lib.sh
@@ -14,7 +14,7 @@ set -euo pipefail
 SKIP=","
 PROFILES_ARG=""
 
-usage() { sed -n '2,9p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -155,7 +155,77 @@ step_git() {
 # --- 5. Clé SSH --------------------------------------------------------------
 step_ssh() { bash "$MY_ENV_DIR/scripts/ssh-key.sh" "${MY_ENV_SSH_KEY:-$HOME/.ssh/id_ed25519}"; }
 
-# --- 6. Config des apps ----------------------------------------------------------
+# --- 6. Skills Claude ---------------------------------------------------------------
+# <couche>/skills.list, une ligne par skill:
+#   <nom>                            -> lien symbolique vers my-skills/<nom>
+#   <url git> <chemin> <commit|tag>  -> copie figée du dossier <chemin> du dépôt public
+# Un dossier déjà présent dans ~/.claude/skills et non géré par nous n'est jamais écrasé:
+# il est déplacé en <nom>.pre-my-env.
+SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+
+set_aside() {
+  local t="$1"
+  { [ -e "$t" ] || [ -L "$t" ]; } || return 0
+  if [ -e "$t.pre-my-env" ] || [ -L "$t.pre-my-env" ]; then
+    warn "$t existe, et $t.pre-my-env aussi: ignoré, à résoudre à la main"; return 1
+  fi
+  run mv "$t" "$t.pre-my-env"
+  warn "$t déjà présent: déplacé en $t.pre-my-env"
+}
+
+skill_local() {
+  local name="$1" src="$MY_ENV_DIR/my-skills/$1" dst="$SKILLS_DIR/$1"
+  if [ ! -f "$src/SKILL.md" ]; then warn "skill local introuvable: my-skills/$name"; return 0; fi
+  if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then ok "skill $name déjà lié"; return 0; fi
+  if [ -L "$dst" ]; then run rm "$dst"; else set_aside "$dst" || return 0; fi
+  run ln -s "$src" "$dst"
+  if [ "$DRY_RUN" != 1 ]; then ok "skill $name -> my-skills/$name"; fi
+}
+
+skill_public() {
+  local url="$1" path="$2" rev="$3" name dst want tmp
+  name="$(basename "$path")"; dst="$SKILLS_DIR/$name"; want="$url $path $rev"
+  if [ -f "$dst/.my-env-source" ] && [ "$(cat "$dst/.my-env-source")" = "$want" ]; then
+    ok "skill $name déjà à jour ($rev)"; return 0
+  fi
+  if [ "$DRY_RUN" = 1 ]; then log "[dry-run] skill $name <- $url @ $rev"; return 0; fi
+  tmp="$(mktemp -d)"
+  if ! { git -C "$tmp" init -q && git -C "$tmp" fetch -q --depth 1 "$url" "$rev" && git -C "$tmp" checkout -q FETCH_HEAD; }; then
+    warn "skill $name: impossible de récupérer '$rev' depuis $url (SHA complet de 40 caractères ou tag requis)"
+    rm -rf "$tmp"; return 0
+  fi
+  if [ ! -f "$tmp/$path/SKILL.md" ]; then
+    warn "skill $name: $path/SKILL.md absent à $rev"; rm -rf "$tmp"; return 0
+  fi
+  if [ -f "$dst/.my-env-source" ]; then rm -rf "$dst"; else set_aside "$dst" || { rm -rf "$tmp"; return 0; }; fi
+  cp -R "$tmp/$path" "$dst"
+  printf '%s\n' "$want" > "$dst/.my-env-source"
+  rm -rf "$tmp"
+  ok "skill $name installé depuis $url @ ${rev:0:12}"
+}
+
+step_skills() {
+  local layer f line a b c rest
+  run mkdir -p "$SKILLS_DIR"
+  for layer in $(layers); do
+    f="$MY_ENV_DIR/$layer/skills.list"
+    [ -f "$f" ] || continue
+    # fd 3: git/ssh lisent stdin et avaleraient le reste du fichier
+    while IFS= read -r -u 3 line || [ -n "$line" ]; do
+      line="${line%%#*}"
+      read -r a b c rest <<< "$line" || true
+      [ -n "${a:-}" ] || continue
+      case "$a" in
+        *://*|git@*)
+          if [ -n "${c:-}" ]; then skill_public "$a" "$b" "$c"
+          else warn "$layer/skills.list: ligne incomplète (url chemin commit): $a"; fi ;;
+        *) skill_local "$a" ;;
+      esac
+    done 3< "$f"
+  done
+}
+
+# --- 7. Config des apps ----------------------------------------------------------
 # Rectangle lit ~/Library/Application Support/Rectangle/RectangleConfig.json à son lancement
 # et demande confirmation dans une popup avant d'appliquer (puis consomme le fichier).
 step_apps() {
@@ -174,7 +244,7 @@ step_apps() {
   fi
 }
 
-for step in xcode brew shell git ssh apps; do
+for step in xcode brew shell git ssh skills apps; do
   if skipped "$step"; then warn "étape '$step' ignorée"; continue; fi
   log "Étape: $step"
   "step_$step"

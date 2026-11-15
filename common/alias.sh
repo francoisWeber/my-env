@@ -1,6 +1,7 @@
 # Alias communs à tous les profils. À éditer à la main.
 
-alias ll='ls -lah'
+alias ll="ls -lhFG"
+alias octal='stat -f %A'
 alias ..='cd ..'
 alias ...='cd ../..'
 

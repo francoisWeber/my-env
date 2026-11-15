@@ -1,0 +1,14 @@
+# Skills Claude actifs sur tous les profils (installés dans ~/.claude/skills par install.sh).
+# Une ligne par skill, de deux formes:
+#
+#   <nom>                             skill à moi: dossier my-skills/<nom> (lien symbolique)
+#   <url git> <chemin> <commit|tag>   skill public: dossier <chemin> du dépôt, FIGÉ à ce commit (SHA complet, 40 car.) ou tag
+#
+# Un skill est un prompt exécuté par l'agent: le commit est obligatoire, jamais de branche flottante.
+# Pour monter de version, relire le diff amont puis changer le commit.
+# Retirer une ligne ne désinstalle rien: supprimer à la main dans ~/.claude/skills.
+
+# mattpocock/skills (licence MIT). Amont: "grilling" contient le texte; "grill-me" n'est plus qu'un
+# wrapper qui l'appelle (conserve la commande /grill-me). L'ancien texte local a été réécrit en amont.
+https://github.com/mattpocock/skills.git  skills/productivity/grilling  5863806dd4e15c63174bee4e7515a4256792ecfa
+https://github.com/mattpocock/skills.git  skills/productivity/grill-me  5863806dd4e15c63174bee4e7515a4256792ecfa
